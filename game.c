@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+// #include <unistd.h>
+// #include <limits.h>
+// #include <string.h>
 #include "raylib.h"
 
 
@@ -16,9 +19,13 @@ At each step in time, the following transitions occur:
 
 void clearArray();
 
+char* get_resource_path(const char* filename);
+
 typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY} GameScreen;
 
 int ARRAY_SIZE = 32;
+
+#define RESOURCES_FOLDER "Resources"
 
 // row maijor
 // 0 — dead, 1 — alive
@@ -26,7 +33,6 @@ int cellArray[1024] = {0};
 
 int main()
 {
-
     // cellArray[35] = 1;
     // cellArray[67] = 1;
     // cellArray[99] = 1;
@@ -59,7 +65,25 @@ int main()
 
     InitWindow(screenWidth, screenHeight, "Game of Life");
 
-    Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/resources/cell.png"); // Load button texture
+
+    // char* imagePath = get_resource_path("cell.png"); // Replace with your image filename
+    // if (imagePath == NULL) printf("Error getting resource path\n");
+
+
+    // char cwd[PATH_MAX];
+    // if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    //     printf("\n\n\n\n\nCurrent working dir: %s\n\n\n\n\n", cwd);
+    // } else {
+    //     perror("getcwd() error");
+    //     return 1;
+    // }
+
+    // printf("\n\n\n\n\nTexture path: %s\n\n\n\n\n\n", imagePath);
+    Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/Resources/cell.png"); // Load button texture
+    // Texture2D button = LoadTexture("../Resources/cell.png"); // Load button texture
+    // Texture2D button = LoadTexture("./cell.png"); // Load button texture
+    // Texture2D button = LoadTexture("/Applications/Life.app/Contents/Resources/cell.png"); // Load button texture
+    // free(imagePath);
 
     // Define frame rectangle for drawing
     float frameHeight = (float)button.height/2.0f;
@@ -271,9 +295,6 @@ int main()
 }
 
 
-
-
-
 void clearArray()
 {
     for (int i = 0; i < ARRAY_SIZE; i++)
@@ -284,3 +305,47 @@ void clearArray()
         }
     }
 }
+
+
+// char* get_resource_path(const char* filename) {
+//     char cwd[PATH_MAX];       // This is a preprocessor macro defined in <limits.h> header file. It represents the maximum length a file path can have on the current system.
+//     char* resource_path;
+//     char* base_path;
+
+//     // Get the current working directory
+//     if (getcwd(cwd, sizeof(cwd)) == NULL) {
+//         perror("getcwd() error");
+//         return NULL;
+//     }
+
+//     // Find the last occurrence of a forward slash (/)
+//     base_path = strrchr(cwd, '/');
+
+//     // Check if "/" was found and points to "MacOS"
+//     printf("\n\n\n%s\n\n\n", base_path);
+//     printf("\n\n\n%s\n\n\n", cwd);
+//     if (base_path != NULL && strcmp(base_path + 1, "MacOS") == 0) {
+//         // Remove "MacOS" from the path
+//         *base_path = '\0';
+//     } else {
+//         // Handle error: "MacOS" folder not found in path
+//         fprintf(stderr, "Error: Could not find MacOS folder in path\n");
+//         return NULL;
+//     }
+
+//     // Allocate memory for the full path (including filename)
+//     resource_path = malloc(strlen(cwd) + strlen("/") + strlen(RESOURCES_FOLDER) + strlen("/") + strlen(filename) + 1);
+//     if (resource_path == NULL) {
+//         perror("malloc() error");
+//         return NULL;
+//     }
+
+//     // Construct the full path
+//     strcpy(resource_path, cwd);
+//     strcat(resource_path, "/");
+//     strcat(resource_path, RESOURCES_FOLDER);
+//     strcat(resource_path, "/");
+//     strcat(resource_path, filename);
+
+//     return resource_path;
+// }
