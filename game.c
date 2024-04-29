@@ -5,6 +5,8 @@
 // #include <string.h>
 #include "raylib.h"
 
+// color: RGBAlpha
+
 
 /*
 wiki: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
@@ -25,7 +27,7 @@ typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY} GameScreen;
 
 int ARRAY_SIZE = 32;
 
-#define RESOURCES_FOLDER "Resources"
+#define GAME_VERSION "v1.0.1"
 
 // row maijor
 // 0 — dead, 1 — alive
@@ -79,15 +81,15 @@ int main()
     // }
 
     // printf("\n\n\n\n\nTexture path: %s\n\n\n\n\n\n", imagePath);
-    Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/Resources/cell.png"); // Load button texture
+////// Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/Resources/cell.png"); // Load button texture
     // Texture2D button = LoadTexture("../Resources/cell.png"); // Load button texture
     // Texture2D button = LoadTexture("./cell.png"); // Load button texture
     // Texture2D button = LoadTexture("/Applications/Life.app/Contents/Resources/cell.png"); // Load button texture
     // free(imagePath);
 
     // Define frame rectangle for drawing
-    float frameHeight = (float)button.height/2.0f;
-    Rectangle sourceRec = { 0, 0, (float)button.width, frameHeight };
+    // float frameHeight = (float)button.height/2.0f;
+    // Rectangle sourceRec = { 0, 0, (float)button.width, frameHeight };
 
     // Define button bounds on screen
     // Rectangle btnBounds = { screenWidth/2.0f - button.width/2.0f, screenHeight/2.0f - button.height/NUM_FRAMES/2.0f, (float)button.width, frameHeight };
@@ -190,22 +192,6 @@ int main()
             unpopulate[0] = unpopCount;
         }
 
-        // Update
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-        {
-            mousePoint = GetMousePosition();
-            cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 1;
-
-            printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
-        }
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-        {
-            mousePoint = GetMousePosition();
-            cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 0;
-
-            printf("Button clicked on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
-        }
-
         switch(currentScreen)
         {
             case LOGO:
@@ -243,6 +229,19 @@ int main()
                 {
                     frameRate += 5;
                 }
+                // Mouse
+                if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+                {
+                    mousePoint = GetMousePosition();
+                    cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 1;
+                    // printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
+                }
+                if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+                {
+                    mousePoint = GetMousePosition();
+                    cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 0;
+                    // printf("Button clicked on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
+                }
             } break;
             default: break;
         }
@@ -263,22 +262,31 @@ int main()
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
                     DrawText("Game of Life", screenWidth / 2 - 250, 100, 80, BLACK);
-                    DrawText("[LEFT_CLICK] \t-\t populate\n\n[RIGHT_CLICK] \t-\t unpopulate\n\n[SPACE] \t-\t toggle simulation\n\n[C] \t-\t clear all tiles\n\n[+] \t-\t increase speed\n\n[-] \t-\t decrease speed", screenWidth / 2 - 250, 220, 20, BLACK);
-                    DrawText("Any DEAD tile with exactly 3 live neighbors\n\nbecomes a live tile\n\n\nAny LIVE tile with <2 or >3 live neighbors\n\nbecomes a dead tile", screenWidth / 2 - 250, 420, 20, BLACK);
+                    DrawText("Any DEAD tile with exactly 3 live neighbors\n\nbecomes a live tile\n\n\nAny LIVE tile with <2 or >3 live neighbors\n\nbecomes a dead tile", screenWidth / 2 - 250, 220, 20, BLACK);
+                    DrawText("[LEFT_CLICK] \t-\t populate\n\n[RIGHT_CLICK] \t-\t unpopulate\n\n[SPACE] \t-\t toggle simulation\n\n[C] \t-\t clear all tiles\n\n[+] \t-\t increase speed\n\n[-] \t-\t decrease speed", screenWidth / 2 - 250, 375, 20, BLACK);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
-                    DrawText("v1.0.0", screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
+                    DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
                 case GAMEPLAY:
                 {
-                    DrawRectangle(0, 0, screenWidth, screenHeight, LIGHTGRAY);
+                    DrawRectangle(0, 0, screenWidth, screenHeight, WHITE);
 
                     for (int i = 0; i < ARRAY_SIZE; i++)
                     {
                         for (int j = 0; j < ARRAY_SIZE; j++)
                         {
-                            sourceRec.y = cellArray[i * ARRAY_SIZE + j] * frameHeight;
+                            // sourceRec.y = cellArray[i * ARRAY_SIZE + j] * frameHeight;
                             // sourceRec.y = 0;
-                            DrawTextureRec(button, sourceRec, (Vector2){j * (int)button.width, i * (int)button.width}, WHITE); // Draw button frame
+                            //DrawTextureRec(button, sourceRec, (Vector2){j * (int)button.width, i * (int)button.width}, WHITE); // Draw button frame
+                            DrawRectangleLines(i * 20, j * 20, 20, 20, CLITERAL(Color){0, 0, 0, 21});
+                            if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
+                            {
+                                DrawRectangle(j * 20 + 1, i * 20 + 1, 18, 18, CLITERAL(Color){100, 158, 221, 255});
+                            }
+                            else
+                            {
+                                DrawRectangle(j * 20 + 1, i * 20 + 1, 18, 18, CLITERAL(Color){0, 0, 0, 0});
+                            }
                         }
                     }
                 } break;
@@ -288,7 +296,7 @@ int main()
         EndDrawing();
     }
 
-    UnloadTexture(button);
+    // UnloadTexture(button);
     CloseWindow();
 
     return 0;
@@ -305,47 +313,3 @@ void clearArray()
         }
     }
 }
-
-
-// char* get_resource_path(const char* filename) {
-//     char cwd[PATH_MAX];       // This is a preprocessor macro defined in <limits.h> header file. It represents the maximum length a file path can have on the current system.
-//     char* resource_path;
-//     char* base_path;
-
-//     // Get the current working directory
-//     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-//         perror("getcwd() error");
-//         return NULL;
-//     }
-
-//     // Find the last occurrence of a forward slash (/)
-//     base_path = strrchr(cwd, '/');
-
-//     // Check if "/" was found and points to "MacOS"
-//     printf("\n\n\n%s\n\n\n", base_path);
-//     printf("\n\n\n%s\n\n\n", cwd);
-//     if (base_path != NULL && strcmp(base_path + 1, "MacOS") == 0) {
-//         // Remove "MacOS" from the path
-//         *base_path = '\0';
-//     } else {
-//         // Handle error: "MacOS" folder not found in path
-//         fprintf(stderr, "Error: Could not find MacOS folder in path\n");
-//         return NULL;
-//     }
-
-//     // Allocate memory for the full path (including filename)
-//     resource_path = malloc(strlen(cwd) + strlen("/") + strlen(RESOURCES_FOLDER) + strlen("/") + strlen(filename) + 1);
-//     if (resource_path == NULL) {
-//         perror("malloc() error");
-//         return NULL;
-//     }
-
-//     // Construct the full path
-//     strcpy(resource_path, cwd);
-//     strcat(resource_path, "/");
-//     strcat(resource_path, RESOURCES_FOLDER);
-//     strcat(resource_path, "/");
-//     strcat(resource_path, filename);
-
-//     return resource_path;
-// }
