@@ -7,6 +7,12 @@
 
 // color: RGBAlpha
 
+/*
+camera movement logic:
+• camera moves left/right/up/down with wasd/arrow keys
+• camera zooms in/out in where the cursor is pointing with the scroll wheel
+*/
+
 
 /*
 wiki: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
@@ -25,13 +31,14 @@ char* get_resource_path(const char* filename);
 
 typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY} GameScreen;
 
-int ARRAY_SIZE = 32;
+const int ARRAY_SIZE = 100;   //
+const int TILE_SIZE = 20;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.0.1"
+#define GAME_VERSION "v1.0.2"
 
 // row maijor
 // 0 — dead, 1 — alive
-int cellArray[1024] = {0};
+int cellArray[ARRAY_SIZE * ARRAY_SIZE] = {0};
 
 int main()
 {
@@ -62,19 +69,22 @@ int main()
     int gameState = 0;
     
 
-    const int screenWidth = ARRAY_SIZE * 20;
-    const int screenHeight = ARRAY_SIZE * 20;
+    // const int screenWidth = ARRAY_SIZE * TILE_SIZE;
+    // const int screenHeight = ARRAY_SIZE * TILE_SIZE;
+
+    int screenWidth = 640;
+    int screenHeight = 640;
 
     InitWindow(screenWidth, screenHeight, "Game of Life");
 
 
     // char* imagePath = get_resource_path("cell.png"); // Replace with your image filename
-    // if (imagePath == NULL) printf("Error getting resource path\n");
+    // if (imagePath == NULL) // printf("Error getting resource path\n");
 
 
     // char cwd[PATH_MAX];
     // if (getcwd(cwd, sizeof(cwd)) != NULL) {
-    //     printf("\n\n\n\n\nCurrent working dir: %s\n\n\n\n\n", cwd);
+    //     // printf("\n\n\n\n\nCurrent working dir: %s\n\n\n\n\n", cwd);
     // } else {
     //     perror("getcwd() error");
     //     return 1;
@@ -105,6 +115,17 @@ int main()
 
 
     Vector2 mousePoint = { 0.0f, 0.0f };
+
+    Camera2D camera = { 0 };
+    camera.zoom = 1.0f;
+    camera.rotation = 0.0f;
+    camera.target = (Vector2){ (float)(ARRAY_SIZE * TILE_SIZE / 2.0f), (float)(ARRAY_SIZE * TILE_SIZE / 2.0f) };    // essentially 1000.0f, 1000.0f
+    camera.offset = (Vector2){ screenWidth / 2.0f, screenHeight / 2.0f };
+    // float minX = 0, minY = 0, maxX = ARRAY_SIZE * TILE_SIZE, maxY = ARRAY_SIZE * TILE_SIZE;
+
+    // for the blinking [space] on start
+    // 0 — LIGHTGREY; 1 — GREY
+    int isGrey = 0; 
 
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -179,14 +200,14 @@ int main()
             for (int i = 1; i <= popCount; i++)
             {
                 cellArray[populate[i]] = 1;
-                printf("Populated:%d %d\n", populate[i] % ARRAY_SIZE, populate[i] / ARRAY_SIZE);
+                // printf("Populated:%d %d\n", populate[i] % ARRAY_SIZE, populate[i] / ARRAY_SIZE);
             }
             popCount = 0;
             populate[0] = popCount;
             for (int i = 1; i <= unpopCount; i++)
             {
                 cellArray[unpopulate[i]] = 0;
-                printf("Unpopulated:%d %d\n", unpopulate[i] % ARRAY_SIZE, unpopulate[i] / ARRAY_SIZE);
+                // printf("Unpopulated:%d %d\n", unpopulate[i] % ARRAY_SIZE, unpopulate[i] / ARRAY_SIZE);
             }
             unpopCount = 0;
             unpopulate[0] = unpopCount;
@@ -197,7 +218,7 @@ int main()
             case LOGO:
             {
                 // Wait for 2 seconds (120 frames) before jumping to TITLE screen
-                if (framesCounter > 120) currentScreen = TITLE;
+                if (framesCounter > 10) currentScreen = TITLE;
             } break;
             case TITLE:
             {
@@ -206,19 +227,29 @@ int main()
                 {
                     currentScreen = GAMEPLAY;
                 }
+                if(framesCounter % 60 == 0)
+                {
+                    isGrey = !(isGrey) && 1 || isGrey && 0;  // isGrey = xor(isGrey, 1)
+                }
             } break;
             case GAMEPLAY:
             {
                 if (IsKeyPressed(KEY_SPACE))
                 {
                     gameState = !gameState;
-                    printf("game mode toggled\n");
+                    // printf("game mode toggled\n");
                 }
                 if (IsKeyPressed(KEY_C))
                 {
                     clearArray();
                     gameState = 0;
-                    printf("array cleared\tand\tgame mode toggled\n");
+                    // printf("array cleared\tand\tgame mode toggled\n");
+                }
+                if (IsKeyPressed(KEY_R))
+                {
+                    camera.target.x = (float)(ARRAY_SIZE * TILE_SIZE / 2.0f);
+                    camera.target.y = (float)(ARRAY_SIZE * TILE_SIZE / 2.0f);
+                    camera.zoom = 1.0f;
                 }
                 if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(43))    // (int)'+' = 43
                 {
@@ -229,19 +260,92 @@ int main()
                 {
                     frameRate += 5;
                 }
-                // Mouse
+
+                // Mouse Drawing
+                mousePoint = GetMousePosition();
+                mousePoint.x = mousePoint.x / camera.zoom;
+                mousePoint.y = mousePoint.y / camera.zoom;
+                // printf("Camera zoom level: %f\tMouce on %d %d\t%d %d\t%d %d\t%d %d\t", camera.zoom, (int)GetMousePosition().x, (int)GetMousePosition().y, (int)mousePoint.x, (int)mousePoint.y, ((int)mousePoint.x) / TILE_SIZE, ((int)mousePoint.y) / TILE_SIZE, ((int)mousePoint.x) % TILE_SIZE, ((int)mousePoint.y) % TILE_SIZE);
                 if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
                 {
                     mousePoint = GetMousePosition();
-                    cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 1;
-                    // printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
+                    // mousePoint.x = (mousePoint.x / camera.zoom) - camera.offset.x + camera.target.x;
+                    // mousePoint.y = (mousePoint.y / camera.zoom) - camera.offset.y + camera.target.y;
+                    mousePoint.x = (mousePoint.x - camera.offset.x) / camera.zoom + camera.target.x;
+                    mousePoint.y = (mousePoint.y - camera.offset.y) / camera.zoom + camera.target.y;
+                    if (
+                        mousePoint.x >= 0 &&
+                        mousePoint.x < ARRAY_SIZE * TILE_SIZE &&            // in bounds of array
+                        // mousePoint.x <= screenWidth / camera.zoom &&     // in bounds of screen
+                        mousePoint.y >= 0 &&
+                        mousePoint.y < ARRAY_SIZE * TILE_SIZE               // in bounds of array
+                        // mousePoint.y <= screenHeight / camera.zoom       // in bounds of screen
+                    )    // check that mouse doesn't go out of bounds
+                    {
+                        if (camera.zoom > 1.5)      // we don't care about the border when it's super tiny
+                        {
+                            if ((int)mousePoint.x % TILE_SIZE > 0 && (int)mousePoint.x % TILE_SIZE < (TILE_SIZE - 1) && (int)mousePoint.y % TILE_SIZE > 0 && (int)mousePoint.y % TILE_SIZE < (TILE_SIZE - 1))   // mouse doesn't draw on the boarder
+                            {
+                                cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = 1;
+                            }
+                        }
+                        else
+                        {
+                            cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = 1;
+                        }
+                    }
+                    // printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / TILE_SIZE, ((int)mousePoint.y) / TILE_SIZE, gameState);
                 }
                 if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
                 {
                     mousePoint = GetMousePosition();
-                    cellArray[(((int)mousePoint.y) / 20) * ARRAY_SIZE + (((int)mousePoint.x) / 20)] = 0;
-                    // printf("Button clicked on %d %d\t now: %d\n", ((int)mousePoint.x) / 20, ((int)mousePoint.y) / 20, gameState);
+                    mousePoint.x = (mousePoint.x - camera.offset.x) / camera.zoom + camera.target.x;
+                    mousePoint.y = (mousePoint.y - camera.offset.y) / camera.zoom + camera.target.y;
+                    if (
+                        mousePoint.x >= 0 &&
+                        mousePoint.x < ARRAY_SIZE * TILE_SIZE &&                // in bounds of array
+                        // mousePoint.x <= screenWidth / camera.zoom &&    // in bounds of screen
+                        mousePoint.y >= 0 &&
+                        mousePoint.y < ARRAY_SIZE * TILE_SIZE                // in bounds of array
+                        // && mousePoint.y <= screenHeight / camera.zoom       // in bounds of screen
+                    )    // check that mouse doesn't go out of bounds
+                    {
+                        if (camera.zoom > 1.5)      // we don't care about the border when it's super tiny
+                        {
+                            if ((int)mousePoint.x % TILE_SIZE > 0 && (int)mousePoint.x % TILE_SIZE < (TILE_SIZE - 1) && (int)mousePoint.y % TILE_SIZE > 0 && (int)mousePoint.y % TILE_SIZE < (TILE_SIZE - 1))   // mouse doesn't draw on the boarder
+                            {
+                                cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = 0;
+                            }
+                        }
+                        else
+                        {
+                            cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = 0;
+                        }
+                    }
+                    // printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / TILE_SIZE, ((int)mousePoint.y) / TILE_SIZE, gameState);
                 }
+
+                // Screen movement
+                // printf("\t\t\t\t%d %d\t\t%d %d\n", (int)camera.target.x, (int)camera.target.y, (int)camera.offset.x, (int)camera.offset.y);
+                if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) camera.target.x += ((float)TILE_SIZE / camera.zoom);
+                if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) camera.target.x -= ((float)TILE_SIZE / camera.zoom);
+                if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) camera.target.y -= ((float)TILE_SIZE / camera.zoom);
+                if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) camera.target.y += ((float)TILE_SIZE / camera.zoom);
+
+                // Keep screen inside grid
+                if (camera.target.x - (camera.offset.x / camera.zoom) < 0) camera.target.x = (camera.offset.x / camera.zoom);
+                if (camera.target.y - (camera.offset.y / camera.zoom) < 0) camera.target.y = (camera.offset.y / camera.zoom);
+                if (camera.target.x - (2000.0f - (camera.offset.x / camera.zoom)) > 0) camera.target.x = 2000.0f - (camera.offset.x / camera.zoom);
+                if (camera.target.y - (2000.0f - (camera.offset.y / camera.zoom)) > 0) camera.target.y = 2000.0f - (camera.offset.y / camera.zoom);
+
+                // Screen zoom
+                if (GetMouseWheelMove())
+                {
+                    camera.zoom += ((float)GetMouseWheelMove()*0.05f);
+                    if (camera.zoom < (float)(screenWidth) / (float)(ARRAY_SIZE * TILE_SIZE)) camera.zoom = (float)(screenWidth) / (float)(ARRAY_SIZE * TILE_SIZE);
+                    // or if (camera.zoom < 0.32f) camera.zoom = 0.32f;
+                }
+
             } break;
             default: break;
         }
@@ -256,14 +360,17 @@ int main()
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
                     DrawText("Game of Life", screenWidth / 2 - 250, 100, 80, BLACK);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
-                    DrawText("v1.0.0", screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
+                    DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
                 case TITLE:
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
                     DrawText("Game of Life", screenWidth / 2 - 250, 100, 80, BLACK);
-                    DrawText("Any DEAD tile with exactly 3 live neighbors\n\nbecomes a live tile\n\n\nAny LIVE tile with <2 or >3 live neighbors\n\nbecomes a dead tile", screenWidth / 2 - 250, 220, 20, BLACK);
-                    DrawText("[LEFT_CLICK] \t-\t populate\n\n[RIGHT_CLICK] \t-\t unpopulate\n\n[SPACE] \t-\t toggle simulation\n\n[C] \t-\t clear all tiles\n\n[+] \t-\t increase speed\n\n[-] \t-\t decrease speed", screenWidth / 2 - 250, 375, 20, BLACK);
+                    DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\n\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, 205, 20, BLACK);
+                    DrawText("[LEFT_CLICK] \t-\t draw\n[RIGHT_CLICK] \t-\t delete", screenWidth / 2 - 250, 337, 20, GRAY);
+                    if(isGrey) DrawText("[SPACE] \t-\t toggle simulation", screenWidth / 2 - 250, 381, 20, GRAY);
+                    else DrawText("[SPACE] \t-\t toggle simulation", screenWidth / 2 - 250, 381, 20, LIGHTGRAY);
+                    DrawText("[C] \t-\t clear all tiles\n[R] \t-\t reset camera position\n[+] \t-\t increase speed\n[-] \t-\t decrease speed\n\n[esc] \t-\t quit game", screenWidth / 2 - 250, 403, 20, GRAY);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
@@ -271,24 +378,31 @@ int main()
                 {
                     DrawRectangle(0, 0, screenWidth, screenHeight, WHITE);
 
-                    for (int i = 0; i < ARRAY_SIZE; i++)
-                    {
-                        for (int j = 0; j < ARRAY_SIZE; j++)
+                    BeginMode2D(camera);
+                        for (int i = 0; i < ARRAY_SIZE; i++)
                         {
-                            // sourceRec.y = cellArray[i * ARRAY_SIZE + j] * frameHeight;
-                            // sourceRec.y = 0;
-                            //DrawTextureRec(button, sourceRec, (Vector2){j * (int)button.width, i * (int)button.width}, WHITE); // Draw button frame
-                            DrawRectangleLines(i * 20, j * 20, 20, 20, CLITERAL(Color){0, 0, 0, 21});
-                            if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
+                            for (int j = 0; j < ARRAY_SIZE; j++)
                             {
-                                DrawRectangle(j * 20 + 1, i * 20 + 1, 18, 18, CLITERAL(Color){100, 158, 221, 255});
-                            }
-                            else
-                            {
-                                DrawRectangle(j * 20 + 1, i * 20 + 1, 18, 18, CLITERAL(Color){0, 0, 0, 0});
+                                //DrawRectangleLines(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, CLITERAL(Color){0, 0, 0, 21});
+                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE - 1, 1, CLITERAL(Color){0, 0, 0, 21});
+                                DrawRectangle(j * TILE_SIZE + TILE_SIZE - 1, i * TILE_SIZE, 1, TILE_SIZE - 1, CLITERAL(Color){0, 0, 0, 21});
+
+
+                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + 1, 1, TILE_SIZE - 2, CLITERAL(Color){0, 0, 0, 21});
+
+                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + TILE_SIZE - 1, TILE_SIZE, 1, CLITERAL(Color){0, 0, 0, 21});
+
+                                if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
+                                {
+                                    DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, CLITERAL(Color){100, 158, 221, 255});
+                                }
+                                else
+                                {
+                                    DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, CLITERAL(Color){0, 0, 0, 0});
+                                }
                             }
                         }
-                    }
+                    EndMode2D();
                 } break;
                 default: break;
             }
