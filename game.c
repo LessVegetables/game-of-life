@@ -5,6 +5,8 @@
 // #include <string.h>
 #include "raylib.h"
 
+#include "fileio.h"
+
 // color: RGBAlpha
 
 /*
@@ -76,6 +78,15 @@ int main()
     int screenHeight = 640;
 
     InitWindow(screenWidth, screenHeight, "Game of Life");
+
+
+    // audio
+    InitAudioDevice();      // Initialize audio device
+
+    Sound fxWav = LoadSound("resources/sound.wav");         // Load WAV audio file
+    Sound fxOgg = LoadSound("resources/target.ogg");        // Load OGG audio file
+    // audio
+
 
 
     // char* imagePath = get_resource_path("cell.png"); // Replace with your image filename
@@ -410,7 +421,10 @@ int main()
         EndDrawing();
     }
 
-    // UnloadTexture(button);
+
+    UnloadSound(fxWav);     // Unload sound data
+    UnloadSound(fxOgg);     // Unload sound data
+    CloseAudioDevice();     // Close audio device
     CloseWindow();
 
     return 0;
