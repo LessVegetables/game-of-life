@@ -36,7 +36,7 @@ typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY} GameScreen;
 const int ARRAY_SIZE = 100;   //
 const int TILE_SIZE = 20;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.0.2"
+#define GAME_VERSION "v1.1.0"
 
 // row maijor
 // 0 — dead, 1 — alive
@@ -53,6 +53,8 @@ int main()
     // 3 * 32 + 3 = 96 + 3 = 99
 
     int aliveCount = 0; // how many alive cells around are there
+    int teleport = 0;   // toggle teleport or not (T)
+    int viewMode = 0;   // toggle grid drawing (V)
     
     int unpopCount = 0; // how many cells to kill
     int unpopulate[ARRAY_SIZE * ARRAY_SIZE];    // list of coordinates of cells to kill (arr[0] == len(arr))
@@ -164,22 +166,59 @@ int main()
                     */
 
                     k = i * ARRAY_SIZE + j;
-                    n = k - ARRAY_SIZE;
-                    s = k + ARRAY_SIZE;
-                    e = k - 1;
-                    w = k + 1;
-                    ne = k - (ARRAY_SIZE + 1);
-                    nw = k - (ARRAY_SIZE - 1);
-                    se = k + (ARRAY_SIZE - 1);
-                    sw = k + (ARRAY_SIZE + 1);
+
+                    if (!teleport)
+                    {
+                        // n = k - ARRAY_SIZE;
+                        // s = k + ARRAY_SIZE;
+                        // e = k - 1;
+                        // w = k + 1;
+                        // ne = k - (ARRAY_SIZE + 1);
+                        // nw = k - (ARRAY_SIZE - 1);
+                        // se = k + (ARRAY_SIZE - 1);
+                        // sw = k + (ARRAY_SIZE + 1);
+                        n = (i - 1) * ARRAY_SIZE + j;
+                        s = (i + 1) * ARRAY_SIZE + j;
+                        e = i * ARRAY_SIZE + j + 1;
+                        w = i * ARRAY_SIZE + j - 1;
+
+                        ne = (i - 1) * ARRAY_SIZE + j + 1;
+                        nw = (i - 1) * ARRAY_SIZE + j - 1;
+                        se = (i + 1) * ARRAY_SIZE + j + 1;
+                        sw = (i + 1) * ARRAY_SIZE + j - 1;
+                    }
+                    else
+                    {
+                        // printf("teleport ON?\n");
+                        n = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + j;
+                        s = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + j;
+                        e = i * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
+                        w = i * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
+                        
+                        ne = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
+                        nw = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
+                        se = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
+                        sw = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
+                    }
+
+                    // if (n % ARRAY_SIZE == k % ARRAY_SIZE)
+                    // {
+                    //     if (n >= 0) aliveCount += cellArray[n];
+                    //     else if (teleport) aliveCount += cellArray[ARRAY_SIZE*ARRAY_SIZE - n];
+                    // }
+                    // if (s % ARRAY_SIZE == k % ARRAY_SIZE)
+                    // {
+                    //     if (s < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[s];
+                    //     else if (teleport) aliveCount += cellArray[s - ARRAY_SIZE*ARRAY_SIZE];
+                    // }
 
                     if (e / ARRAY_SIZE == k / ARRAY_SIZE && e >= 0) aliveCount += cellArray[e];
                     if (n % ARRAY_SIZE == k % ARRAY_SIZE && n >= 0) aliveCount += cellArray[n];
                     if (s % ARRAY_SIZE == k % ARRAY_SIZE && s < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[s];
                     if (w / ARRAY_SIZE == k / ARRAY_SIZE && w < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[w];
 
-                    if (ne / ARRAY_SIZE == n / ARRAY_SIZE && ne > 0) aliveCount += cellArray[ne];
-                    if (nw / ARRAY_SIZE == n / ARRAY_SIZE && nw > 0) aliveCount += cellArray[nw];
+                    if (ne / ARRAY_SIZE == n / ARRAY_SIZE && ne >= 0) aliveCount += cellArray[ne];
+                    if (nw / ARRAY_SIZE == n / ARRAY_SIZE && nw >= 0) aliveCount += cellArray[nw];
                     if (se / ARRAY_SIZE == s / ARRAY_SIZE && se < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[se];
                     if (sw / ARRAY_SIZE == s / ARRAY_SIZE && sw < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[sw];
 
@@ -249,6 +288,14 @@ int main()
                 {
                     gameState = !gameState;
                     // printf("game mode toggled\n");
+                }
+                if (IsKeyPressed(KEY_T))
+                {
+                    teleport = !teleport;
+                }
+                if (IsKeyPressed(KEY_V))
+                {
+                    viewMode = !viewMode;
                 }
                 if (IsKeyPressed(KEY_C))
                 {
@@ -369,19 +416,21 @@ int main()
                 case LOGO:
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
-                    DrawText("Game of Life", screenWidth / 2 - 250, 100, 80, BLACK);
+                    DrawText("Game of ", screenWidth / 2 - 250, 100, 80, BLACK);
+                    DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, CLITERAL(Color){100, 158, 221, 255});
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
                 case TITLE:
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
-                    DrawText("Game of Life", screenWidth / 2 - 250, 100, 80, BLACK);
+                    DrawText("Game of ", screenWidth / 2 - 250, 100, 80, BLACK);
+                    DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, CLITERAL(Color){100, 158, 221, 255});
                     DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\n\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, 205, 20, BLACK);
-                    DrawText("[LEFT_CLICK] \t-\t draw\n[RIGHT_CLICK] \t-\t delete", screenWidth / 2 - 250, 337, 20, GRAY);
-                    if(isGrey) DrawText("[SPACE] \t-\t toggle simulation", screenWidth / 2 - 250, 381, 20, GRAY);
-                    else DrawText("[SPACE] \t-\t toggle simulation", screenWidth / 2 - 250, 381, 20, LIGHTGRAY);
-                    DrawText("[C] \t-\t clear all tiles\n[R] \t-\t reset camera position\n[+] \t-\t increase speed\n[-] \t-\t decrease speed\n\n[esc] \t-\t quit game", screenWidth / 2 - 250, 403, 20, GRAY);
+                    DrawText("[LEFT_CLICK]\t-\tdraw\n[RIGHT_CLICK]\t-\terase", screenWidth / 2 - 250, 337, 20, GRAY);
+                    if(isGrey) DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, GRAY);
+                    else DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, LIGHTGRAY);
+                    DrawText("[C]\t-\tclear all tiles\n[R]\t-\treset camera position\n[T]\t-\ttoggle TELEPORT mode\n[V]\t-\ttoggle grid view\n[+]\t-\tincrease speed\n[-]\t-\tdecrease speed\n\n[esc]\t-\tquit game", screenWidth / 2 - 250, 403, 20, GRAY);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
@@ -395,17 +444,21 @@ int main()
                             for (int j = 0; j < ARRAY_SIZE; j++)
                             {
                                 //DrawRectangleLines(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, CLITERAL(Color){0, 0, 0, 21});
-                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE - 1, 1, CLITERAL(Color){0, 0, 0, 21});
-                                DrawRectangle(j * TILE_SIZE + TILE_SIZE - 1, i * TILE_SIZE, 1, TILE_SIZE - 1, CLITERAL(Color){0, 0, 0, 21});
 
-
-                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + 1, 1, TILE_SIZE - 2, CLITERAL(Color){0, 0, 0, 21});
-
-                                DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + TILE_SIZE - 1, TILE_SIZE, 1, CLITERAL(Color){0, 0, 0, 21});
+                                if (!viewMode)
+                                {
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE - 1, 1, CLITERAL(Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE + TILE_SIZE - 1, i * TILE_SIZE, 1, TILE_SIZE - 1, CLITERAL(Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + 1, 1, TILE_SIZE - 2, CLITERAL(Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + TILE_SIZE - 1, TILE_SIZE, 1, CLITERAL(Color){0, 0, 0, 21});
+                                }
 
                                 if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
                                 {
-                                    DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, CLITERAL(Color){100, 158, 221, 255});
+                                    if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, CLITERAL(Color){100, 158, 221, 255});
+                                    else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, CLITERAL(Color){100, 158, 221, 255});
+
+                                    // DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, CLITERAL(Color){100, 158, 221, 255});
                                 }
                                 else
                                 {
