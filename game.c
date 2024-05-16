@@ -273,7 +273,8 @@ int main()
             case TITLE:
             {
                 // Press enter to change to GAMEPLAY screen
-                if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP) || IsKeyPressed(KEY_SPACE))
+                // IsGestureDetected(GESTURE_TAP)
+                if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))
                 {
                     currentScreen = GAMEPLAY;
                 }
@@ -426,11 +427,11 @@ int main()
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
                     DrawText("Game of ", screenWidth / 2 - 250, 100, 80, BLACK);
                     DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, CLITERAL(Color){100, 158, 221, 255});
-                    DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\n\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, 205, 20, BLACK);
+                    DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, 205, 20, BLACK);
                     DrawText("[LEFT_CLICK]\t-\tdraw\n[RIGHT_CLICK]\t-\terase", screenWidth / 2 - 250, 337, 20, GRAY);
                     if(isGrey) DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, GRAY);
                     else DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, LIGHTGRAY);
-                    DrawText("[C]\t-\tclear all tiles\n[R]\t-\treset camera position\n[T]\t-\ttoggle TELEPORT mode\n[V]\t-\ttoggle grid view\n[+]\t-\tincrease speed\n[-]\t-\tdecrease speed\n\n[esc]\t-\tquit game", screenWidth / 2 - 250, 403, 20, GRAY);
+                    DrawText("[C]\t-\tclear all tiles\n[R]\t-\treset camera position\n[T]\t-\ttoggle TELEPORT mode\n[V]\t-\ttoggle grid view\n[+]\t-\tincrease speed\n[-]\t-\tdecrease speed\n[esc]\t-\tquit game", screenWidth / 2 - 250, 403, 20, GRAY);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
