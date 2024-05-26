@@ -2,10 +2,52 @@
 #include <stdlib.h>
 // #include <unistd.h>
 // #include <limits.h>
-// #include <string.h>
+#include <string.h>
 #include "raylib.h"
 
-#include "fileio.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#define PATH_SEPARATOR '\\'
+#else
+#include <unistd.h>
+#define PATH_SEPARATOR '/'
+#endif
+// Function to get the Downloads folder path
+void getDownloadsPath(char* path, size_t size);
+
+
+//#include "loopDetection.h"
+#define TABLE_SIZE 10007  // A prime number for the hash table size
+typedef struct HashNode {
+    uint32_t hash;
+    struct HashNode* next;
+} HashNode;
+HashNode* hashTable[TABLE_SIZE] = {0};
+int containsHash(uint32_t hash);
+void addHash(uint32_t hash);
+void freeHashTable();
+
+
+// superfasthash.c
+#include <stdint.h> /* Replace with "pstdint.h" if appropriate */
+
+// Paul Hseieh • Super Fast Hash
+// http://www.azillionmonkeys.com/qed/hash.html
+#undef get16bits
+#if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \
+  || defined(_MSC_VER) || defined (__BORLANDC__) || defined (__TURBOC__)
+#define get16bits(d) (*((const uint16_t *) (d)))
+#endif
+
+#if !defined (get16bits)
+#define get16bits(d) ((((uint32_t)(((const uint8_t *)(d))[1])) << 8)\
+                       +(uint32_t)(((const uint8_t *)(d))[0]) )
+#endif
+
+uint32_t SuperFastHash (const char * data, int len);
+
+// #include "fileio.h"
 
 // color: RGBAlpha
 
@@ -31,16 +73,17 @@ void clearArray();
 
 char* get_resource_path(const char* filename);
 
-typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY} GameScreen;
+typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY, PAUSE} GameScreen;
 
 const int ARRAY_SIZE = 100;   //
 const int TILE_SIZE = 20;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.1.0"
+#define GAME_VERSION "v1.3.0"
 
 // row maijor
 // 0 — dead, 1 — alive
-int cellArray[ARRAY_SIZE * ARRAY_SIZE] = {0};
+int cellArray[100 * 100] = {0};
+int loopHash;
 
 int main()
 {
@@ -78,6 +121,7 @@ int main()
 
     int screenWidth = 640;
     int screenHeight = 640;
+    int fullScreen = 0;     // by default — it opens in a 640x640 window. [F] should toggle full screens
 
     InitWindow(screenWidth, screenHeight, "Game of Life");
 
@@ -121,6 +165,8 @@ int main()
 
     GameScreen currentScreen = LOGO;
 
+    bool exitWindow = false;            // Flag to set window to exit
+    int gameScreenUponRequest;          // Self explanatory; also doubles as a flag to request window to exit
 
     int framesCounter = 0;          // Useful to count frames
     int frameRate = 15;             // Every [frameRate] frames, the picture update (but game still runs at 60fps, for a smother drawing feeling)
@@ -128,6 +174,7 @@ int main()
 
 
     Vector2 mousePoint = { 0.0f, 0.0f };
+    Vector2 mousePointWorld;
 
     Camera2D camera = { 0 };
     camera.zoom = 1.0f;
@@ -136,16 +183,54 @@ int main()
     camera.offset = (Vector2){ screenWidth / 2.0f, screenHeight / 2.0f };
     // float minX = 0, minY = 0, maxX = ARRAY_SIZE * TILE_SIZE, maxY = ARRAY_SIZE * TILE_SIZE;
 
-    // for the blinking [space] on start
+    // for the blinking [space] on start; and blinking [y/n] in pause screen
     // 0 — LIGHTGREY; 1 — GREY
     int isGrey = 0; 
 
     // Main game loop
-    while (!WindowShouldClose())    // Detect window close button or ESC key
+    while (!exitWindow)    // Detect window close button or ESC key
     {
         framesCounter++;
+
+        // Detect if X-button or KEY_ESCAPE have been pressed to close window
+        if ((WindowShouldClose() || IsKeyPressed(KEY_ESCAPE)) && currentScreen != PAUSE)
+        {
+            gameScreenUponRequest = currentScreen;
+            currentScreen = PAUSE;
+            gameState = 0;
+        }
+
+        // fullscreen / 640x640
+        if (IsKeyPressed(KEY_F))
+        {
+            fullScreen = !fullScreen;
+            int monitor = GetCurrentMonitor();
+            if (fullScreen)
+            {
+                screenWidth = GetMonitorWidth(monitor);
+                screenHeight = GetMonitorHeight(monitor);
+                printf("SCREEN SIZE CHANGED TO\nw:\t%d\nh:\t%d\n", screenWidth, screenHeight);
+                SetWindowSize(screenWidth, screenHeight);
+                camera.offset = (Vector2){ (float)screenWidth / 2.0f, (float)screenHeight / 2.0f };
+                camera.zoom = 1.0f;
+                // DisableCursor();
+                ToggleFullscreen();
+            }
+            else
+            {
+                // EnableCursor();
+                ToggleFullscreen();
+                screenWidth = 640;
+                screenHeight = 640;
+                camera.offset = (Vector2){ 320.0f, 320.0f };    // screenWidth / 2.0f, screenHeight / 2.0f
+                camera.zoom = 1.0f;
+                SetWindowSize(screenWidth, screenHeight);
+            }
+
+        }
+
         // printf("gameState: %d\n", gameState);
-        if (gameState && framesCounter % frameRate == 0)
+        if (gameState && (framesCounter % frameRate == 0))
         {
             for (int i = 0; i < ARRAY_SIZE; i++)
             {
@@ -201,17 +286,6 @@ int main()
                         sw = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
                     }
 
-                    // if (n % ARRAY_SIZE == k % ARRAY_SIZE)
-                    // {
-                    //     if (n >= 0) aliveCount += cellArray[n];
-                    //     else if (teleport) aliveCount += cellArray[ARRAY_SIZE*ARRAY_SIZE - n];
-                    // }
-                    // if (s % ARRAY_SIZE == k % ARRAY_SIZE)
-                    // {
-                    //     if (s < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[s];
-                    //     else if (teleport) aliveCount += cellArray[s - ARRAY_SIZE*ARRAY_SIZE];
-                    // }
-
                     if (e / ARRAY_SIZE == k / ARRAY_SIZE && e >= 0) aliveCount += cellArray[e];
                     if (n % ARRAY_SIZE == k % ARRAY_SIZE && n >= 0) aliveCount += cellArray[n];
                     if (s % ARRAY_SIZE == k % ARRAY_SIZE && s < ARRAY_SIZE*ARRAY_SIZE) aliveCount += cellArray[s];
@@ -261,6 +335,30 @@ int main()
             }
             unpopCount = 0;
             unpopulate[0] = unpopCount;
+
+
+            // BEGIN: loop detection
+            uint32_t hash = SuperFastHash((const char*)cellArray, sizeof(cellArray));
+            // Check if this state has been seen before
+            if (containsHash(hash)) {
+                printf("Loop detected!\n");
+
+                char downloadPath[512];
+                getDownloadsPath(downloadPath, sizeof(downloadPath));
+
+                char filePath[512];
+                snprintf(filePath, sizeof(filePath), "%s%c%s", downloadPath, PATH_SEPARATOR, "loop.gif");
+
+                // Now filePath contains the full path to the GIF file in the Downloads folder.
+                printf("Exporting GIF to: %s\n", filePath);
+                exportGif(filePath);
+            }
+            // Add the hash of the current state to the hash table
+
+            // Image LoadImageFromTexture(Texture2D texture)
+
+            addHash(hash);
+            // END: loop detection
         }
 
         switch(currentScreen)
@@ -278,11 +376,16 @@ int main()
                 {
                     currentScreen = GAMEPLAY;
                 }
-                if(framesCounter % 60 == 0)
-                {
-                    isGrey = !(isGrey) && 1 || isGrey && 0;  // isGrey = xor(isGrey, 1)
-                }
+                if(framesCounter % 60 == 0) isGrey = !isGrey;
             } break;
+            case PAUSE:
+            {
+                if(framesCounter % 60 == 0) isGrey = !isGrey;
+                // A request for close window has been issued
+                if (IsKeyPressed(KEY_Y)) exitWindow = true;
+                else if (IsKeyPressed(KEY_N)) currentScreen = gameScreenUponRequest;    // note: gameState is still 0
+                break;
+            }
             case GAMEPLAY:
             {
                 if (IsKeyPressed(KEY_SPACE))
@@ -341,7 +444,7 @@ int main()
                         // mousePoint.y <= screenHeight / camera.zoom       // in bounds of screen
                     )    // check that mouse doesn't go out of bounds
                     {
-                        if (camera.zoom > 1.5)      // we don't care about the border when it's super tiny
+                        if (camera.zoom > 1.5f)      // we don't care about the border when it's super tiny
                         {
                             if ((int)mousePoint.x % TILE_SIZE > 0 && (int)mousePoint.x % TILE_SIZE < (TILE_SIZE - 1) && (int)mousePoint.y % TILE_SIZE > 0 && (int)mousePoint.y % TILE_SIZE < (TILE_SIZE - 1))   // mouse doesn't draw on the boarder
                             {
@@ -394,8 +497,8 @@ int main()
                 // Keep screen inside grid
                 if (camera.target.x - (camera.offset.x / camera.zoom) < 0) camera.target.x = (camera.offset.x / camera.zoom);
                 if (camera.target.y - (camera.offset.y / camera.zoom) < 0) camera.target.y = (camera.offset.y / camera.zoom);
-                if (camera.target.x - (2000.0f - (camera.offset.x / camera.zoom)) > 0) camera.target.x = 2000.0f - (camera.offset.x / camera.zoom);
-                if (camera.target.y - (2000.0f - (camera.offset.y / camera.zoom)) > 0) camera.target.y = 2000.0f - (camera.offset.y / camera.zoom);
+                if (camera.target.x - ((float)(TILE_SIZE*ARRAY_SIZE) - (camera.offset.x / camera.zoom)) > 0.0f) camera.target.x = (float)(TILE_SIZE*ARRAY_SIZE) - (camera.offset.x / camera.zoom);       // the full screen bug is here.
+                if (camera.target.y - ((float)(TILE_SIZE*ARRAY_SIZE) - (camera.offset.y / camera.zoom)) > 0.0f) camera.target.y = (float)(TILE_SIZE*ARRAY_SIZE) - (camera.offset.y / camera.zoom);
 
                 // Screen zoom
                 if (GetMouseWheelMove())
@@ -411,7 +514,7 @@ int main()
 
         // Draw
         BeginDrawing();
-            ClearBackground(RAYWHITE);
+            ClearBackground(WHITE);     // or mayb RAYWHITE
             switch(currentScreen)
             {
                 case LOGO:
@@ -424,17 +527,24 @@ int main()
                 } break;
                 case TITLE:
                 {
-                    DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
-                    DrawText("Game of ", screenWidth / 2 - 250, 100, 80, BLACK);
-                    DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, CLITERAL(Color){100, 158, 221, 255});
-                    DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, 205, 20, BLACK);
-                    DrawText("[LEFT_CLICK]\t-\tdraw\n[RIGHT_CLICK]\t-\terase", screenWidth / 2 - 250, 337, 20, GRAY);
-                    if(isGrey) DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, GRAY);
-                    else DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, 381, 20, LIGHTGRAY);
-                    DrawText("[C]\t-\tclear all tiles\n[R]\t-\treset camera position\n[T]\t-\ttoggle TELEPORT mode\n[V]\t-\ttoggle grid view\n[+]\t-\tincrease speed\n[-]\t-\tdecrease speed\n[esc]\t-\tquit game", screenWidth / 2 - 250, 403, 20, GRAY);
+                    DrawText("John Conway's", screenWidth / 2 - 250, (35.0f / 640.0f) * screenHeight, 40, GRAY);
+                    DrawText("Game of ", screenWidth / 2 - 250, (100.0f / 640.0f) * screenHeight, 80, BLACK);
+                    DrawText("Life", screenWidth / 2 - 250 + 352, (100.0f / 640.0f) * screenHeight, 80, CLITERAL(Color){100, 158, 221, 255});
+                    DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\n\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, (205.0f / 640.0f) * screenHeight, 20, BLACK);
+                    DrawText("[LEFT_CLICK]\t-\tdraw\n[RIGHT_CLICK]\t-\terase", screenWidth / 2 - 250, (337.0f / 640.0f) * screenHeight, 20, GRAY);
+                    if(isGrey) DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, (381.0f / 640.0f) * screenHeight, 20, GRAY);
+                    else DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, (381.0f / 640.0f) * screenHeight, 20, LIGHTGRAY);
+                    DrawText("[C]\t-\tclear all tiles\n[R]\t-\treset camera position\n[T]\t-\ttoggle TELEPORT mode\n[V]\t-\ttoggle grid view\n[+]\t-\tincrease speed\n[-]\t-\tdecrease speed\n[esc]\t-\tquit game", screenWidth / 2 - 250, (403.0f / 640.0f) * screenHeight, 20, GRAY);
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
+                case PAUSE:
+                {
+                    DrawText("Are you sure you want to exit? [Y/N]", (screenWidth - 390) / 2, screenHeight / 3, 20, BLACK);
+                    if(isGrey) DrawText("[Y/N]", (screenWidth - 390) / 2 + 334, screenHeight / 3, 20, BLACK);
+                    else DrawText("[Y/N]", (screenWidth - 390) / 2 + 334, screenHeight / 3, 20, GRAY);
+                    break;
+                }
                 case GAMEPLAY:
                 {
                     DrawRectangle(0, 0, screenWidth, screenHeight, WHITE);
@@ -467,6 +577,18 @@ int main()
                                 }
                             }
                         }
+
+                        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+                        {
+                            mousePoint = GetMousePosition();
+                            mousePointWorld = GetScreenToWorld2D(mousePoint, camera); // Get the world space position for a 2d camera screen space position
+                            DrawRectangle((int)mousePointWorld.x - ((int)mousePointWorld.x % TILE_SIZE) + 1, (int)mousePointWorld.y - ((int)mousePointWorld.y % TILE_SIZE) + 1, 18, 18, CLITERAL(Color){0, 0, 0, 21});
+                        }
+                        // for debugging purposes
+                        DrawRectangle(0, 0, TILE_SIZE, TILE_SIZE, RED);
+                        DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, RED);
+                        DrawRectangle(0, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE,RED);
+                        DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE, RED);
                     EndMode2D();
                 } break;
                 default: break;
@@ -480,6 +602,7 @@ int main()
     UnloadSound(fxOgg);     // Unload sound data
     CloseAudioDevice();     // Close audio device
     CloseWindow();
+    freeHashTable();
 
     return 0;
 }
@@ -495,3 +618,110 @@ void clearArray()
         }
     }
 }
+
+// BEGIN: loopdetction
+int containsHash(uint32_t hash)
+{
+    int index = hash % TABLE_SIZE;
+    HashNode* node = hashTable[index];
+    while (node != NULL)
+    {
+        if (node->hash == hash)
+        {
+            return 1;
+        }
+        node = node->next;
+    }
+    return 0;
+}
+
+void addHash(uint32_t hash)
+{
+    int index = hash % TABLE_SIZE;
+    HashNode* newNode = (HashNode*)malloc(sizeof(HashNode));
+    newNode->hash = hash;
+    newNode->next = hashTable[index];
+    hashTable[index] = newNode;
+}
+
+void freeHashTable()
+{
+    for (int i = 0; i < TABLE_SIZE; i++)
+    {
+        HashNode* node = hashTable[i];
+        while (node != NULL)
+        {
+            HashNode* temp = node;
+            node = node->next;
+            free(temp);
+        }
+    }
+}
+// END: loopdetction
+
+// BEGIN: superfasthash
+uint32_t SuperFastHash (const char * data, int len)
+{
+    uint32_t hash = len, tmp;
+    int rem;
+
+    if (len <= 0 || data == NULL) return 0;
+
+    rem = len & 3;
+    len >>= 2;
+
+    /* Main loop */
+    for (;len > 0; len--)
+    {
+        hash  += get16bits (data);
+        tmp    = (get16bits (data+2) << 11) ^ hash;
+        hash   = (hash << 16) ^ tmp;
+        data  += 2*sizeof (uint16_t);
+        hash  += hash >> 11;
+    }
+
+    /* Handle end cases */
+    switch (rem)
+    {
+        case 3: hash += get16bits (data);
+                hash ^= hash << 16;
+                hash ^= ((signed char)data[sizeof (uint16_t)]) << 18;
+                hash += hash >> 11;
+                break;
+        case 2: hash += get16bits (data);
+                hash ^= hash << 11;
+                hash += hash >> 17;
+                break;
+        case 1: hash += (signed char)*data;
+                hash ^= hash << 10;
+                hash += hash >> 1;
+    }
+
+    /* Force "avalanching" of final 127 bits */
+    hash ^= hash << 3;
+    hash += hash >> 5;
+    hash ^= hash << 4;
+    hash += hash >> 17;
+    hash ^= hash << 25;
+    hash += hash >> 6;
+
+    return hash;
+}
+// END: superfasthash
+
+// BEGIN: dowload path
+// Function to get the Downloads folder path
+void getDownloadsPath(char* path, size_t size) {
+    #if defined(_WIN32) || defined(_WIN64)
+        char userProfile[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, userProfile))) {
+            snprintf(path, size, "%s\\Downloads", userProfile);
+        }
+    #else
+        const char* home = getenv("HOME");
+        if (home != NULL) {
+            snprintf(path, size, "%s/Downloads", home);
+        }
+    #endif
+}
+// END: download path
