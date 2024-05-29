@@ -33,7 +33,7 @@ void saveCellArrayToFile()
     for (int i = 0; i < ARRAY_SIZE * ARRAY_SIZE; i++)
     {
         if (cellArray[i] == 0) continue;
-        fprintf(out, "%d %d\n", i % ARRAY_SIZE, i / ARRAY_SIZE);
+        fprintf(out, "%d %d %d %d %d %d\n", i % ARRAY_SIZE, i / ARRAY_SIZE, cellArrayColor[i].r, cellArrayColor[i].g, cellArrayColor[i].b, cellArrayColor[i].a);
     }
     fclose(out);
 }
@@ -51,11 +51,15 @@ void readCellArrayFromFile(const char *filePath)
     }
 
     clearArray();
-    int x, y;
+    int x, y, r, g, b, a;
     for (int i = 0; i < ARRAY_SIZE * ARRAY_SIZE; i++)
     {
-        fscanf(inp, "%d %d", &x, &y);
-        if (y * ARRAY_SIZE + x < ARRAY_SIZE * ARRAY_SIZE) cellArray[y * ARRAY_SIZE + x] = 1;
+        fscanf(inp, "%d %d %d %d %d %d", &x, &y, &r, &g, &b, &a);
+        if (y * ARRAY_SIZE + x < ARRAY_SIZE * ARRAY_SIZE)
+        {
+            cellArray[y * ARRAY_SIZE + x] = 1;
+            cellArrayColor[y * ARRAY_SIZE + x] = (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, (unsigned char)a};
+        }
     }
     fclose(inp);
 }

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "game.h"   // for cellArray
+#include "raylib.h" // for Colort struct
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
