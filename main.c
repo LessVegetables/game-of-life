@@ -31,14 +31,26 @@ typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY, PAUSE} GameScreen;
 
 typedef enum ToolSelect { BRUSH = 0, LINE, SQUARE, CIRCLE} ToolSelect;
 
-extern const int ARRAY_SIZE;  //
+extern const int ARRAY_SIZE;
 extern const int TILE_SIZE;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.4.0"
-#define MYBLUE CLITERAL(Color){100, 158, 221, 255}
+#define GAME_VERSION "v1.5.0"
+#define MYBLUE (Color){100, 158, 221, 255};
+
+Color ListOfColors[19] = {{100, 158, 221, 255}, YELLOW, GOLD, ORANGE, PINK, RED, MAROON, GREEN, LIME, DARKGREEN, SKYBLUE, BLUE, DARKBLUE, PURPLE, VIOLET, DARKPURPLE, BEIGE, BROWN, DARKBROWN};
 
 int main()
 {
+    for (int i = 0; i < ARRAY_SIZE * ARRAY_SIZE; i++)
+    {
+        cellArrayColor[i].r = (unsigned char) 0;
+        cellArrayColor[i].g = (unsigned char) 0;
+        cellArrayColor[i].b = (unsigned char) 0;
+        cellArrayColor[i].a = (unsigned char) 0;
+    }
+
+    int colorIndex = 0; // default — my blue
+
     int aliveCount = 0; // how many alive cells around are there
     int viewMode = 0;   // toggle grid drawing (V)
     
@@ -243,6 +255,19 @@ int main()
                     frameRate += 5;
                 }
 
+                // chagning color
+                if(IsKeyPressed(KEY_GRAVE)) colorIndex = 0;
+                if(IsKeyPressed(KEY_ONE)) colorIndex = 1;
+                if(IsKeyPressed(KEY_TWO)) colorIndex = 2;
+                if(IsKeyPressed(KEY_THREE)) colorIndex = 3;
+                if(IsKeyPressed(KEY_FOUR)) colorIndex = 4;
+                if(IsKeyPressed(KEY_FIVE)) colorIndex = 5;
+                if(IsKeyPressed(KEY_SIX)) colorIndex = 6;
+                if(IsKeyPressed(KEY_SEVEN)) colorIndex = 7;
+                if(IsKeyPressed(KEY_EIGHT)) colorIndex = 8;
+                if(IsKeyPressed(KEY_NINE)) colorIndex = 9;
+                if(IsKeyPressed(KEY_ZERO)) colorIndex = 10;
+
 
                 // dropping/importing files
                 if (IsFileDropped())
@@ -282,17 +307,22 @@ int main()
                                 mousePoint.y < ARRAY_SIZE * TILE_SIZE               // in bounds of array
                             )    // check that mouse doesn't go out of bounds
                             {
+                                int coord = ((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE);
                                 if (camera.zoom > 1.5f)      // we don't care about the border when it's super tiny
                                 {
                                     if ((int)mousePoint.x % TILE_SIZE > 0 && (int)mousePoint.x % TILE_SIZE < (TILE_SIZE - 1) && (int)mousePoint.y % TILE_SIZE > 0 && (int)mousePoint.y % TILE_SIZE < (TILE_SIZE - 1))   // mouse doesn't draw on the boarder
                                     {
-                                        cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = deletDraw;
+                                        cellArray[coord] = deletDraw;
                                     }
                                 }
                                 else
                                 {
-                                    cellArray[((int)(mousePoint.y) / TILE_SIZE) * ARRAY_SIZE + ((int)(mousePoint.x) / TILE_SIZE)] = deletDraw;
+                                    cellArray[coord] = deletDraw;
                                 }
+                                cellArrayColor[coord].r = ListOfColors[colorIndex].r;
+                                cellArrayColor[coord].g = ListOfColors[colorIndex].g;
+                                cellArrayColor[coord].b = ListOfColors[colorIndex].b;
+                                cellArrayColor[coord].a = ListOfColors[colorIndex].a;
                             }
                         }
                         // printf("Button on %d %d\t now: %d\n", ((int)mousePoint.x) / TILE_SIZE, ((int)mousePoint.y) / TILE_SIZE, gameState);
@@ -356,7 +386,7 @@ int main()
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, 35, 40, GRAY);
                     DrawText("Game of ", screenWidth / 2 - 250, 100, 80, BLACK);
-                    DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, CLITERAL(Color){100, 158, 221, 255});
+                    DrawText("Life", screenWidth / 2 - 250 + 352, 100, 80, (Color){100, 158, 221, 255});
                     DrawText("DANIEL GEHRMAN 2024", screenWidth / 2 - 250, screenHeight - 54, 20, LIGHTGRAY);
                     DrawText(GAME_VERSION, screenWidth - 74 - 48, screenHeight - 54, 20, LIGHTGRAY);
                 } break;
@@ -364,7 +394,7 @@ int main()
                 {
                     DrawText("John Conway's", screenWidth / 2 - 250, (35.0f / 640.0f) * screenHeight, 40, GRAY);
                     DrawText("Game of ", screenWidth / 2 - 250, (100.0f / 640.0f) * screenHeight, 80, BLACK);
-                    DrawText("Life", screenWidth / 2 - 250 + 352, (100.0f / 640.0f) * screenHeight, 80, CLITERAL(Color){100, 158, 221, 255});
+                    DrawText("Life", screenWidth / 2 - 250 + 352, (100.0f / 640.0f) * screenHeight, 80, (Color){100, 158, 221, 255});
                     DrawText("Any DEAD tile with exactly 3 live neighbors\nbecomes a live tile\n\nAny LIVE tile with <2 or >3 live neighbors\nbecomes a dead tile", screenWidth / 2 - 250, (205.0f / 640.0f) * screenHeight, 20, BLACK);
                     DrawText("[LEFT_CLICK]\t-\tdraw\n[RIGHT_CLICK]\t-\terase", screenWidth / 2 - 250, (337.0f / 640.0f) * screenHeight, 20, GRAY);
                     if(isGrey) DrawText("[SPACE]\t-\ttoggle simulation", screenWidth / 2 - 250, (381.0f / 640.0f) * screenHeight, 20, GRAY);
@@ -393,22 +423,26 @@ int main()
 
                                 if (!viewMode)
                                 {
-                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE - 1, 1, CLITERAL(Color){0, 0, 0, 21});
-                                    DrawRectangle(j * TILE_SIZE + TILE_SIZE - 1, i * TILE_SIZE, 1, TILE_SIZE - 1, CLITERAL(Color){0, 0, 0, 21});
-                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + 1, 1, TILE_SIZE - 2, CLITERAL(Color){0, 0, 0, 21});
-                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + TILE_SIZE - 1, TILE_SIZE, 1, CLITERAL(Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE - 1, 1, (Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE + TILE_SIZE - 1, i * TILE_SIZE, 1, TILE_SIZE - 1, (Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + 1, 1, TILE_SIZE - 2, (Color){0, 0, 0, 21});
+                                    DrawRectangle(j * TILE_SIZE, i * TILE_SIZE + TILE_SIZE - 1, TILE_SIZE, 1, (Color){0, 0, 0, 21});
                                 }
 
                                 if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
                                 {
-                                    if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, MYBLUE);
-                                    else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, MYBLUE);
+                                    // if (gameState) printf("Cell (%d, %d) IS ALIVE: aliveCount=%d, totalR=%d, totalG=%d, totalB=%d\n", i, j, aliveCount, cellArrayColor[i * ARRAY_SIZE + j].r, cellArrayColor[i * ARRAY_SIZE + j].g, cellArrayColor[i * ARRAY_SIZE + j].b);
+                                    if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, cellArrayColor[i * ARRAY_SIZE + j]);
+                                    else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, cellArrayColor[i * ARRAY_SIZE + j]);
+                                    // if (gameState) printf("Cell (%d, %d) IS ALIVE: aliveCount=%d, totalR=%d, totalG=%d, totalB=%d\n", i, j, aliveCount, cellArrayColor[i * ARRAY_SIZE + j].r, cellArrayColor[i * ARRAY_SIZE + j].g, cellArrayColor[i * ARRAY_SIZE + j].b);
+                                    // if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, MYBLUE);
+                                    // else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, MYBLUE);
 
                                     // DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, CLITERAL(Color){100, 158, 221, 255});
                                 }
                                 else
                                 {
-                                    DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, CLITERAL(Color){0, 0, 0, 0});
+                                    DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, (Color){0, 0, 0, 0});
                                 }
                             }
                         }
@@ -419,7 +453,7 @@ int main()
                         {
                             mousePoint = GetMousePosition();
                             mousePointWorld = GetScreenToWorld2D(mousePoint, camera); // Get the world space position for a 2d camera screen space position
-                            DrawRectangle((int)mousePointWorld.x - ((int)mousePointWorld.x % TILE_SIZE) + 1, (int)mousePointWorld.y - ((int)mousePointWorld.y % TILE_SIZE) + 1, 18, 18, CLITERAL(Color){0, 0, 0, 21});
+                            DrawRectangle((int)mousePointWorld.x - ((int)mousePointWorld.x % TILE_SIZE) + 1, (int)mousePointWorld.y - ((int)mousePointWorld.y % TILE_SIZE) + 1, 18, 18, (Color){ListOfColors[colorIndex].r, ListOfColors[colorIndex].g, ListOfColors[colorIndex].b, 128});
                         }
                         // for debugging purposes
                         DrawRectangle(0, 0, TILE_SIZE, TILE_SIZE, RED);
