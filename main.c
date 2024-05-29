@@ -5,6 +5,7 @@
 #include "game.h"
 #include "fileio.h"
 #include "loopDetection.h"
+#include <math.h>
 
 // #include "fileio.h"
 
@@ -27,6 +28,8 @@ At each step in time, the following transitions occur:
 
 // Daniel Gehrman
 
+
+
 typedef enum GameScreen { LOGO = 0, TITLE, GAMEPLAY, PAUSE} GameScreen;
 
 typedef enum ToolSelect { BRUSH = 0, LINE, SQUARE, CIRCLE} ToolSelect;
@@ -34,10 +37,15 @@ typedef enum ToolSelect { BRUSH = 0, LINE, SQUARE, CIRCLE} ToolSelect;
 extern const int ARRAY_SIZE;
 extern const int TILE_SIZE;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.5.0"
+#define GAME_VERSION "v1.6.0"
 #define MYBLUE (Color){100, 158, 221, 255};
 
 Color ListOfColors[19] = {{100, 158, 221, 255}, YELLOW, GOLD, ORANGE, PINK, RED, MAROON, GREEN, LIME, DARKGREEN, SKYBLUE, BLUE, DARKBLUE, PURPLE, VIOLET, DARKPURPLE, BEIGE, BROWN, DARKBROWN};
+
+
+int isValidCell(int cellX, int cellY) {
+    return cellX >= 0 && cellX < ARRAY_SIZE && cellY >= 0 && cellY < ARRAY_SIZE;
+}
 
 int main()
 {
@@ -281,11 +289,11 @@ int main()
                 // exporting files
                 if (IsKeyPressed(KEY_E)) saveCellArrayToFile();
 
-                // Mouse Drawing
-
+                // Drawing Tool
+                if (IsKeyPressed(KEY_TAB)) currentTool = !currentTool; // so right now just BRUSH and LINE
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                 {
-                    mousePointStart = GetMousePosition();
+                    mousePointStart = GetScreenToWorld2D(GetMousePosition(), camera);
                 }
                 switch (currentTool)
                 {
@@ -331,12 +339,90 @@ int main()
                     {
                         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
                         {
-                            mousePointEnd = GetMousePosition();
+                            mousePointEnd = GetScreenToWorld2D(GetMousePosition(), camera);
 
-                            mousePointStart.x -= (float)(((int)mousePointStart.x % TILE_SIZE) + 1);
-                            mousePointStart.y -= (float)(((int)mousePointStart.y % TILE_SIZE) + 1);
-                            mousePointEnd.x -= (float)(((int)mousePointEnd.x % TILE_SIZE) + 1);
-                            mousePointEnd.y -= (float)(((int)mousePointEnd.y % TILE_SIZE) + 1);
+                            // Bresenham's algorithm
+                            float dx = fabs(mousePointEnd.x - mousePointStart.x);
+                            float dy = fabs(mousePointEnd.y - mousePointStart.y);
+                            float sx = (mousePointStart.x < mousePointEnd.x) ? 1 : -1;
+                            float sy = (mousePointStart.y < mousePointEnd.y) ? 1 : -1;
+                            float err = dx - dy;
+                            
+                            while (1) {
+                                // Get the cell coordinates
+                                int cellX = mousePointStart.x / TILE_SIZE;
+                                int cellY = mousePointStart.y / TILE_SIZE;
+
+                                if (mousePointStart.x >= mousePointEnd.x && mousePointStart.y >= mousePointEnd.y)
+                                    break;
+
+                                if (isValidCell(cellX, cellY)) {
+                                // Process the cell (you can set it to alive or do whatever is needed)
+                                cellArray[cellY * ARRAY_SIZE + cellX] = 1;
+                                cellArrayColor[cellY * ARRAY_SIZE + cellX] = ListOfColors[colorIndex];
+                                }
+                                else
+                                {
+                                    printf("Cell in path: (%d, %d) is not valid\n", cellX, cellY);
+                                    break;
+                                }
+                                // printf("Cell in path: (%d, %d)\n", cellX, cellY);
+
+                                // Check if we've reached the end point
+
+                                float e2 = 2 * err;
+                                if (e2 > -dy) {
+                                    err -= dy;
+                                    mousePointStart.x += sx;
+                                }
+                                if (e2 < dx) {
+                                    err += dx;
+                                    mousePointStart.y += sy;
+                                }
+                            }
+                        }
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
+                        {
+                            mousePointEnd = GetScreenToWorld2D(GetMousePosition(), camera);
+
+                            float dx = fabs(mousePointEnd.x - mousePointStart.x);
+                            float dy = fabs(mousePointEnd.y - mousePointStart.y);
+                            float sx = (mousePointStart.x < mousePointEnd.x) ? 1 : -1;
+                            float sy = (mousePointStart.y < mousePointEnd.y) ? 1 : -1;
+                            float err = dx - dy;
+                            
+                            while (1) {
+                                // Get the cell coordinates
+                                int cellX = mousePointStart.x / TILE_SIZE;
+                                int cellY = mousePointStart.y / TILE_SIZE;
+
+
+                                if (isValidCell(cellX, cellY)) {
+                                // Process the cell (you can set it to alive or do whatever is needed)
+                                cellArray[cellY * ARRAY_SIZE + cellX] = 1;
+                                cellArrayColor[cellY * ARRAY_SIZE + cellX] = (Color){0, 0, 0, 0};
+                                }
+                                else
+                                {
+                                    printf("Cell in path: (%d, %d) is not valid\n", cellX, cellY);
+                                    break;
+                                }
+                                // printf("Cell in path: (%d, %d)\n", cellX, cellY);
+
+                                // Check if we've reached the end point
+                                if (mousePointStart.x == mousePointEnd.x && mousePointStart.y == mousePointEnd.y)
+                                    break;
+
+                                float e2 = 2 * err;
+                                if (e2 > -dy) {
+                                    err -= dy;
+                                    mousePointStart.x += sx;
+                                }
+                                if (e2 < dx) {
+                                    err += dx;
+                                    mousePointStart.y += sy;
+                                }
+                            }
                         }
 
                     }break;
@@ -431,12 +517,8 @@ int main()
 
                                 if (cellArray[i * ARRAY_SIZE + j])  // if cell is alive
                                 {
-                                    // if (gameState) printf("Cell (%d, %d) IS ALIVE: aliveCount=%d, totalR=%d, totalG=%d, totalB=%d\n", i, j, aliveCount, cellArrayColor[i * ARRAY_SIZE + j].r, cellArrayColor[i * ARRAY_SIZE + j].g, cellArrayColor[i * ARRAY_SIZE + j].b);
                                     if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, cellArrayColor[i * ARRAY_SIZE + j]);
                                     else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, cellArrayColor[i * ARRAY_SIZE + j]);
-                                    // if (gameState) printf("Cell (%d, %d) IS ALIVE: aliveCount=%d, totalR=%d, totalG=%d, totalB=%d\n", i, j, aliveCount, cellArrayColor[i * ARRAY_SIZE + j].r, cellArrayColor[i * ARRAY_SIZE + j].g, cellArrayColor[i * ARRAY_SIZE + j].b);
-                                    // if (!viewMode) DrawRectangle(j * TILE_SIZE + 1, i * TILE_SIZE + 1, 18, 18, MYBLUE);
-                                    // else DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, MYBLUE);
 
                                     // DrawRectangle(j * TILE_SIZE, i * TILE_SIZE, 20, 20, CLITERAL(Color){100, 158, 221, 255});
                                 }
@@ -448,18 +530,19 @@ int main()
                         }
 
 
-
                         if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
                         {
                             mousePoint = GetMousePosition();
                             mousePointWorld = GetScreenToWorld2D(mousePoint, camera); // Get the world space position for a 2d camera screen space position
                             DrawRectangle((int)mousePointWorld.x - ((int)mousePointWorld.x % TILE_SIZE) + 1, (int)mousePointWorld.y - ((int)mousePointWorld.y % TILE_SIZE) + 1, 18, 18, (Color){ListOfColors[colorIndex].r, ListOfColors[colorIndex].g, ListOfColors[colorIndex].b, 128});
                         }
+
                         // for debugging purposes
-                        DrawRectangle(0, 0, TILE_SIZE, TILE_SIZE, RED);
-                        DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, RED);
-                        DrawRectangle(0, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE,RED);
-                        DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE, RED);
+                        // DrawRectangle(0, 0, TILE_SIZE, TILE_SIZE, RED);
+                        // DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, RED);
+                        // DrawRectangle(0, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE,RED);
+                        // DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE, RED);
+
                     EndMode2D();
                 } break;
                 default: break;
