@@ -1,3 +1,36 @@
+/*******************************************************************************************
+*
+*   John Conway's Game of Life
+*   By Daniel Gehrman
+*
+*   This game has been created using raylib (www.raylib.com)
+*   raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details)
+*
+*   Copyright (c) 2024 Daniel Gehrman (@danielgehrman)
+*
+********************************************************************************************/
+
+/*
+To all my future bosses: this code — is such a mess. And I know it.
+For the longest time, I tried to keep it neet, but at some point, as you can tell — it just grew out of control.
+Probably not a good idea to have *this* as my example of what I can do. If I end up tiding this up — that would be my biggest achivement.
+Maybe bigger than getting it up and running on an nginx server lol
+*/
+
+/*
+TODO:
+1. Reziable window (1.8.0)
+2. add animations
+2.1 add raylib logo
+3. pretty up the whole experience (bckgrnd animations in the main menu; tidy up the main menu)
+4. Add sound
+5. Add a "help" screen to show all the keyboard commands
+6. Add the toolbar
+7. void SetWindowIcon(Image image); // Set icon for window (single image, RGBA 32bit, only PLATFORM_DESKTOP)
+8. fix the full screen issue
+*/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 // #include <unistd.h>
@@ -5,7 +38,9 @@
 #include "game.h"
 #include "fileio.h"
 #include "loopDetection.h"
+// #include "sideBar.h"
 #include <math.h>
+
 
 // #include "fileio.h"
 
@@ -37,7 +72,21 @@ typedef enum ToolSelect { BRUSH = 0, LINE, SQUARE, CIRCLE} ToolSelect;
 extern const int ARRAY_SIZE;
 extern const int TILE_SIZE;     // Size of NxN tile (with border) in pixels
 
-#define GAME_VERSION "v1.6.0"
+int Button000Pressed;   // play/pause   connected
+int Button001Pressed;   // zoom in      connected
+int Button002Pressed;   // zoom out     connected
+int Button003Pressed;   // info
+int Button004Pressed;   // brush size
+int Button005Pressed;   // color
+int Button006Pressed;   // tool
+int Button007Pressed;   // clear        connected
+
+
+int screenWidth = 640;
+int screenHeight = 640;
+Camera2D camera = { 0 };
+
+#define GAME_VERSION "v1.8.0"
 #define MYBLUE (Color){100, 158, 221, 255};
 
 Color ListOfColors[19] = {{100, 158, 221, 255}, YELLOW, GOLD, ORANGE, PINK, RED, MAROON, GREEN, LIME, DARKGREEN, SKYBLUE, BLUE, DARKBLUE, PURPLE, VIOLET, DARKPURPLE, BEIGE, BROWN, DARKBROWN};
@@ -57,6 +106,7 @@ int main()
         cellArrayColor[i].a = (unsigned char) 0;
     }
 
+    // flags
     int colorIndex = 0; // default — my blue
 
     int aliveCount = 0; // how many alive cells around are there
@@ -75,21 +125,46 @@ int main()
 
     // 0 — game paused; 1 — game running;
     int gameState = 0;
-    // 0 — hidden; 1 — visible;
-    int sideBar = 1;
     // 0 — brush, 1 — line, 2 — square, 3 — circle
     int currentTool = 0;
     // 0 — deleting, 1 — drawing; For mouse drawing
     int deletDraw;
+    // 0 — hidden; 1 — visible;
+    int sideBar = 1;
+
+    // 0 — "idle", 1 — hover, 2 — pressed
+    Button000Pressed = 0;   // play/pause
+    Button001Pressed = 0;   // zoom in
+    Button002Pressed = 0;   // zoom out
+    Button003Pressed = 0;   // info
+    Button004Pressed = 0;   // brush size
+    Button005Pressed = 0;   // color
+    Button006Pressed = 0;   // tool
+    Button007Pressed = 0;   // clear
+
+    int ButtonList[8] = {0};
+
+    bool Button0Action = false; // play/pause 
+    bool Button1Action = false; // zoom in
+    bool Button2Action = false; // zoom out
+    bool Button3Action = false; // info
+    bool Button4Action = false; // brush size
+    bool Button5Action = false; // color
+    bool Button6Action = false; // tool
+    bool Button7Action = false; // clear
+
     
 
     // const int screenWidth = ARRAY_SIZE * TILE_SIZE;
     // const int screenHeight = ARRAY_SIZE * TILE_SIZE;
 
-    int screenWidth = 640;
-    int screenHeight = 640;
+    screenWidth = 640;
+    screenHeight = 640;
+    // screenWidth = GetScreenWidth();
+    // screenHeight = GetScreenHeight();
     int fullScreen = 0;     // by default — it opens in a 640x640 window. [F] should toggle full screens
 
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Game of Life");
 
 
@@ -115,7 +190,7 @@ int main()
     // }
 
     // printf("\n\n\n\n\nTexture path: %s\n\n\n\n\n\n", imagePath);
-////// Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/Resources/cell.png"); // Load button texture
+    // Texture2D button = LoadTexture("/Users/danielgehrman/Documents/Programming/personal/game-of-life/Resources/cell.png"); // Load button texture
     // Texture2D button = LoadTexture("../Resources/cell.png"); // Load button texture
     // Texture2D button = LoadTexture("./cell.png"); // Load button texture
     // Texture2D button = LoadTexture("/Applications/Life.app/Contents/Resources/cell.png"); // Load button texture
@@ -145,7 +220,7 @@ int main()
     Vector2 mousePointStart;
     Vector2 mousePointEnd;
 
-    Camera2D camera = { 0 };
+    // camera = { 0 };
     camera.zoom = 1.0f;
     camera.rotation = 0.0f;
     camera.target = (Vector2){ (float)(ARRAY_SIZE * TILE_SIZE / 2.0f), (float)(ARRAY_SIZE * TILE_SIZE / 2.0f) };    // essentially 1000.0f, 1000.0f
@@ -237,14 +312,19 @@ int main()
             }
             case GAMEPLAY:
             {
-                if (IsKeyPressed(KEY_SPACE))    gameState = !gameState;
+                if (IsKeyPressed(KEY_SPACE) || Button0Action)
+                {
+                    gameState = !gameState;
+                    Button0Action = false;
+                }
                 if (IsKeyPressed(KEY_T))    teleport = !teleport;
                 if (IsKeyPressed(KEY_V))    viewMode = !viewMode;
                 if (IsKeyPressed(KEY_H))    sideBar = !sideBar;
-                if (IsKeyPressed(KEY_C))
+                if (IsKeyPressed(KEY_C) || Button7Action)
                 {
                     clearArray();
                     gameState = 0;
+                    Button7Action = false;
                     // printf("array cleared\tand\tgame mode toggled\n");
                 }
                 if (IsKeyPressed(KEY_R))
@@ -281,7 +361,10 @@ int main()
                 if (IsFileDropped())
                 {
                     gameState = 0;
+
                     FilePathList droppedFiles = LoadDroppedFiles();
+
+                    // add a prompt for "are you sure you want to override the current game state?" type of deal (only when there's smth on the field)
                     readCellArrayFromFile(droppedFiles.paths[0]);
                     UnloadDroppedFiles(droppedFiles);    // Unload filepaths from memory
                 }
@@ -459,6 +542,110 @@ int main()
                     // or if (camera.zoom < 0.32f) camera.zoom = 0.32f;
                 }
 
+                if (Button1Action)
+                {
+                    camera.zoom += 5.0f;
+                    Button1Action = false;
+                    if (camera.zoom < (float)(screenWidth) / (float)(ARRAY_SIZE * TILE_SIZE)) camera.zoom = (float)(screenWidth) / (float)(ARRAY_SIZE * TILE_SIZE);
+                }
+                if (Button2Action)
+                {
+                    camera.zoom -= 5.0f;
+                    Button2Action = false;
+                    if (camera.zoom < 1.0f) camera.zoom = 1.0f;
+                }
+
+
+                if (sideBar)
+                {
+                    float barWidth = 32.0f;
+                    float barHight = barWidth * 8.0f;
+                    // from top to bottom: play/pause, zoom in, zoom out, info, brush size, Color, Tool
+                    Vector2 temp = GetScreenToWorld2D((Vector2){0.0f, (((float)(screenHeight) - barHight) / 2.0f)}, camera);
+
+                    printf("%f %f\n", temp.x, temp.y);
+
+                    Rectangle btn0Bounds = { temp.x, temp.y / 8.0f + (temp.y * 0), barWidth, barWidth };
+                    Rectangle btn1Bounds = { temp.x, temp.y / 8.0f + (temp.y * 1), barWidth, barWidth };
+                    Rectangle btn2Bounds = { temp.x, temp.y / 8.0f + (temp.y * 2), barWidth, barWidth };
+                    Rectangle btn3Bounds = { temp.x, temp.y / 8.0f + (temp.y * 3), barWidth, barWidth };
+                    Rectangle btn4Bounds = { temp.x, temp.y / 8.0f + (temp.y * 4), barWidth, barWidth };
+                    Rectangle btn5Bounds = { temp.x, temp.y / 8.0f + (temp.y * 5), barWidth, barWidth };
+                    Rectangle btn6Bounds = { temp.x, temp.y / 8.0f + (temp.y * 6), barWidth, barWidth };
+                    Rectangle btn7Bounds = { temp.x, temp.y / 8.0f + (temp.y * 7), barWidth, barWidth };
+
+                    if (CheckCollisionPointRec(mousePoint, btn0Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[0] = 2;
+                        else ButtonList[0] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button0Action = true;
+                    }
+                    else ButtonList[0] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn1Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[1] = 2;
+                        else ButtonList[1] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button1Action = true;
+                    }
+                    else ButtonList[1] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn2Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[2] = 2;
+                        else ButtonList[2] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button2Action = true;
+                    }
+                    else ButtonList[2] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn3Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[3] = 2;
+                        else ButtonList[3] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button3Action = true;
+                    }
+                    else ButtonList[3] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn4Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[4] = 2;
+                        else ButtonList[4] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button4Action = true;
+                    }
+                    else ButtonList[4] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn5Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[5] = 2;
+                        else ButtonList[5] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button5Action = true;
+                    }
+                    else ButtonList[5] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn6Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[6] = 2;
+                        else ButtonList[6] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button6Action = true;
+                    }
+                    else ButtonList[6] = 0;
+
+                    if (CheckCollisionPointRec(mousePoint, btn7Bounds))
+                    {
+                        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ButtonList[7] = 2;
+                        else ButtonList[7] = 1;
+
+                        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) Button7Action = true;
+                    }
+                    else ButtonList[7] = 0;
+                }
             } break;
             default: break;
         }
@@ -544,6 +731,43 @@ int main()
                         // DrawRectangle(ARRAY_SIZE * TILE_SIZE - TILE_SIZE, ARRAY_SIZE * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE, RED);
 
                     EndMode2D();
+
+                    if (sideBar)
+                    {
+                        float barWidth = 32.0f;
+                        float barHight = barWidth * 8.0f;
+                        // from top to bottom: play/pause, zoom in, zoom out, info, brush size, Color, Tool
+
+                        // Vector2 temp = GetScreenToWorld2D((Vector2){0.0f, (((float)(screenHeight) - barHight) / 2.0f)}, camera);
+                        Vector2 temp = GetScreenToWorld2D((Vector2){0.0f, 0.0f}, camera);
+
+
+
+                        for (int btnListIndex = 0; btnListIndex < 8; btnListIndex++)
+                        {
+                            switch (ButtonList[btnListIndex])
+                            {
+                                case 0:
+                                {
+                                    DrawRectangle(temp.x, (temp.y * btnListIndex), barWidth, barWidth, (Color){0, 0, 0, 255});
+                                }break;
+                                case 1:
+                                {
+                                    DrawRectangle(temp.x, (temp.y * btnListIndex), barWidth, barWidth, (Color){100, 158, 221, 255});
+                                }break;
+                                case 2:
+                                {
+                                    DrawRectangle(temp.x, (temp.y * btnListIndex), barWidth, barWidth, (Color){0, 0, 0, 128});
+                                }break;
+                                
+                                default: break;
+                            }
+                        }
+
+                        // DrawRectangle(temp.x, temp.y, barWidth, barHight, (Color){100, 158, 221, 255});
+
+                        // Rectangle btnBounds1 = {temp.x, temp.y / 8.0f + (temp.y * 0), barWidth, barWidth };
+                    }
                 } break;
                 default: break;
             }

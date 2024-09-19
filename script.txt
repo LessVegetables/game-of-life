@@ -1,8 +1,0 @@
-eval cc main.c $(pkg-config --libs --cflags raylib) -o main
-eval cc core_basic_screen_manager.c $(pkg-config --libs --cflags raylib) -o main
-eval cc textures_image_loading.c $(pkg-config --libs --cflags raylib) -o main
-
-textures_image_loading.c
-
-
-eval cc game.c $(pkg-config --libs --cflags raylib) -o main

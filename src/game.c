@@ -18,7 +18,7 @@ const int TILE_SIZE = 20;     // Size of NxN tile (with border) in pixels
 // 0 — dead, 1 — alive
 int cellArray[100 * 100] = {0};
 Color cellArrayColor[100 * 100];
-int teleport = 0;   // toggle teleport or not (T)
+int teleport = 1;   // toggle teleport or not (T)
 
 void updateArray()
 {
