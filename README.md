@@ -45,5 +45,6 @@ In the meantime, check [the release page](https://github.com/LessVegetables/game
    ```
 
 ## Credit:
-(Ray)[https://github.com/raysan5] — the godfather of (Raylib)[www.raylib.com], without wich this whole project would just not work.
-(Super Fast Hash by Paul Hseieh)[https://gist.github.com/CedricGuillemet/4978020] — hash algorithm for loop detection.
+[Ray](https://github.com/raysan5) — the godfather of [Raylib](www.raylib.com), without which this whole project would just not work.
+
+[Super Fast Hash by Paul Hseieh](https://gist.github.com/CedricGuillemet/4978020) — hash algorithm for loop detection.
