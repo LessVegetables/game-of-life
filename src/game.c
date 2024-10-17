@@ -1,128 +1,116 @@
-#include "game.h"
+/**********************************************************************************************
+*
+*   raylib - Advance Game template
+*
+*   Gameplay Screen Functions Definitions (Init, Update, Draw, Unload)
+*
+*   Copyright (c) 2014-2022 Ramon Santamaria (@raysan5)
+*
+*   This software is provided "as-is", without any express or implied warranty. In no event
+*   will the authors be held liable for any damages arising from the use of this software.
+*
+*   Permission is granted to anyone to use this software for any purpose, including commercial
+*   applications, and to alter it and redistribute it freely, subject to the following restrictions:
+*
+*     1. The origin of this software must not be misrepresented; you must not claim that you
+*     wrote the original software. If you use this software in a product, an acknowledgment
+*     in the product documentation would be appreciated but is not required.
+*
+*     2. Altered source versions must be plainly marked as such, and must not be misrepresented
+*     as being the original software.
+*
+*     3. This notice may not be removed or altered from any source distribution.
+*
+**********************************************************************************************/
 
-/*
-wiki: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
-At each step in time, the following transitions occur:
-1. Any live cell with fewer than two live neighbors dies, as if by underpopulation.
-2. Any live cell with two or three live neighbors lives on to the next generation.
-3. Any live cell with more than three live neighbors dies, as if by overpopulation.
-4. Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
-*/
+#include "raylib.h"
+#include "screens.h"
+#include "functions.h"
 
-// Daniel Gehrman
-
-const int ARRAY_SIZE = 100;
-const int TILE_SIZE = 20;     // Size of NxN tile (with border) in pixels
+//----------------------------------------------------------------------------------
+// Module Variables Definition (local)
+//----------------------------------------------------------------------------------
+static int framesCounter = 0;
+static int finishScreen = 0;
 
 // row major
 // 0 — dead, 1 — alive
-int cellArray[100 * 100] = {0};
-Color cellArrayColor[100 * 100];
+// int cellArray[ARRAY_SIZE * ARRAY_SIZE] = {0};
+// Color cellArrayColor[ARRAY_SIZE * ARRAY_SIZE];
 int teleport = 1;   // toggle teleport or not (T)
 
-void updateArray()
+//----------------------------------------------------------------------------------
+// Gameplay Screen Functions Definition
+//----------------------------------------------------------------------------------
+
+// Gameplay Screen Initialization logic
+void InitGameplayScreen(void)
 {
-    int aliveCount = 0; // how many alive cells around are there
-    
-    int unpopCount = 0; // how many cells to kill
-    int unpopulate[ARRAY_SIZE * ARRAY_SIZE];    // list of coordinates of cells to kill
-
-    int popCount = 0;   // how many cells to populate
-    int populate[ARRAY_SIZE * ARRAY_SIZE];      // list of coordinates of cells to populate
-    Color populateColor[ARRAY_SIZE * ARRAY_SIZE]; // list of colors for cells to populate
-
-    int k, n, s, e, w, ne, nw, se, sw;
-    
-    for (int i = 0; i < ARRAY_SIZE; i++)
+    framesCounter = 0;
+    finishScreen = 0;
+    for (int i = 0; i < ARRAY_SIZE * ARRAY_SIZE; i++)
     {
-        for (int j = 0; j < ARRAY_SIZE; j++)
-        {
-            aliveCount = 0;
-            int totalR = 0, totalG = 0, totalB = 0;
-            k = i * ARRAY_SIZE + j;
-
-            if (!teleport)
-            {
-                n = (i - 1) * ARRAY_SIZE + j;
-                s = (i + 1) * ARRAY_SIZE + j;
-                e = i * ARRAY_SIZE + j + 1;
-                w = i * ARRAY_SIZE + j - 1;
-                ne = (i - 1) * ARRAY_SIZE + j + 1;
-                nw = (i - 1) * ARRAY_SIZE + j - 1;
-                se = (i + 1) * ARRAY_SIZE + j + 1;
-                sw = (i + 1) * ARRAY_SIZE + j - 1;
-            }
-            else
-            {
-                n = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + j;
-                s = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + j;
-                e = i * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
-                w = i * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
-                ne = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
-                nw = ((ARRAY_SIZE + (i - 1)) % ARRAY_SIZE) * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
-                se = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + ((j + 1) % ARRAY_SIZE);
-                sw = ((i + 1) % ARRAY_SIZE) * ARRAY_SIZE + ((ARRAY_SIZE + (j - 1)) % ARRAY_SIZE);
-            }
-
-            int neighbors[8] = {n, s, e, w, ne, nw, se, sw};
-            for (int idx = 0; idx < 8; idx++)
-            {
-                int neighbor = neighbors[idx];
-                if (neighbor >= 0 && neighbor < ARRAY_SIZE * ARRAY_SIZE)
-                {
-                    if (cellArray[neighbor])
-                    {
-                        aliveCount++;
-                        totalR += (int)cellArrayColor[neighbor].r;
-                        totalG += (int)cellArrayColor[neighbor].g;
-                        totalB += (int)cellArrayColor[neighbor].b;
-                    }
-                }
-            }
-
-            if (cellArray[k])
-            {
-                if (aliveCount < 2 || aliveCount > 3)
-                {
-                    unpopulate[unpopCount] = k;
-                    unpopCount++;
-                }
-            }
-            else
-            {
-                if (aliveCount == 3)
-                {
-                    populate[popCount] = k;
-                    totalR /= 3;
-                    totalG /= 3;
-                    totalB /= 3;
-                    populateColor[popCount] = (Color){(unsigned char)totalR, (unsigned char)totalG, (unsigned char)totalB, (unsigned char) 255};
-                    popCount++;
-                }
-            }
-        }
-    }
-
-    for (int i = 0; i < popCount; i++)
-    {
-        cellArray[populate[i]] = 1;
-        cellArrayColor[populate[i]] = populateColor[i];
-    }
-    for (int i = 0; i < unpopCount; i++)
-    {
-        cellArray[unpopulate[i]] = 0;
-        cellArrayColor[unpopulate[i]] = (Color){0, 0, 0};
+        cellArray[i].state = 0;
+        cellArray[i].color.r = (unsigned char) 0;
+        cellArray[i].color.g = (unsigned char) 0;
+        cellArray[i].color.b = (unsigned char) 0;
+        cellArray[i].color.a = (unsigned char) 0;
     }
 }
 
-void clearArray()
+// Gameplay Screen Update logic
+void UpdateGameplayScreen(void)
 {
-    for (int i = 0; i < ARRAY_SIZE; i++)
+    // TODO: Update GAMEPLAY screen variables here!
+
+    // Press enter or tap to change to ENDING screen
+    if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
     {
-        for (int j = 0; j < ARRAY_SIZE; j++)
-        {
-            cellArray[i * ARRAY_SIZE + j] = 0;
-            cellArrayColor[i * ARRAY_SIZE + j] = (Color){0, 0, 0};
-        }
+        finishScreen = 1;
+        PlaySound(fxCoin);
     }
 }
+
+// Gameplay Screen Draw logic
+void DrawGameplayScreen(void)
+{
+    // TODO: Draw GAMEPLAY screen here!
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), PURPLE);
+    DrawText("PRESS ENTER or TAP to JUMP to ENDING SCREEN", 130, 220, 20, MAROON);
+}
+
+// Gameplay Screen Unload logic
+void UnloadGameplayScreen(void)
+{
+    // TODO: Unload GAMEPLAY screen variables here!
+}
+
+// Gameplay Screen should finish?
+int FinishGameplayScreen(void)
+{
+    return finishScreen;
+}
+
+// In bounds checker (had to do with smth with the ruler)
+int isValidCell(int cellX, int cellY) {
+    return cellX >= 0 && cellX < ARRAY_SIZE && cellY >= 0 && cellY < ARRAY_SIZE;
+}
+
+
+//
+//  SIDE BAR RELATED CRAP
+//
+void InitSideBar(void);
+void UpdateSideBar(void);
+void DrawSideBar(void);
+void UnloadSideBar(void);
+int FinishSideBar(void);
+
+int Button000Pressed;   // play/pause   connected
+int Button001Pressed;   // zoom in      connected
+int Button002Pressed;   // zoom out     connected
+int Button003Pressed;   // info
+int Button004Pressed;   // brush size
+int Button005Pressed;   // color
+int Button006Pressed;   // tool
+int Button007Pressed;   // clear        connected

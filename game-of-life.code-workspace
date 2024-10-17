@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"name": "game-of-life",
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.embeddedhtml": "html",
+			"__node_handle": "c",
+			"stdint.h": "c",
+			"loopdetection.h": "c",
+			"stb_image_write.h": "c",
+			"raylib.h": "c",
+			"superfasthash.h": "c",
+			"fileio.h": "c",
+			"string.h": "c",
+			"game.h": "c",
+			"toolbar.h": "c",
+			"math.h": "c"
+		}
+	}
+}
